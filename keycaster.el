@@ -423,6 +423,7 @@ See `set-face-attribute' help for details."
         (setq-local mode-line-format nil))
       (unless respect-header-line
         (setq-local header-line-format nil))
+      (setq-local indicate-buffer-boundaries nil)
 
       (setq frame
             (make-frame
