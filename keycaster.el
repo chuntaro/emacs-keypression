@@ -352,39 +352,14 @@ See `set-face-attribute' help for details."
       (keycaster--set-position-active-frames)))
     (setq keycaster--last-keystrokes keys)))
 
-(defsubst keycaster--modifiers-to-string (modifiers)
-  (mapconcat (lambda (mod)
-               (cl-case mod
-                 (meta "M-")
-                 (control "C-")
-                 (shift "S-")
-                 (hyper "h-")
-                 (super "s-")
-                 (alt "A-")
-                 (otherwise "")))
-             modifiers
-             ""))
+(defsubst keycaster--keys-to-string (keys)
+  (if (and (eq this-command 'self-insert-command)
+           (string= keys " "))
+      keycaster-space-substitution-string
+    (key-description keys)))
 
-(defsubst keycaster--char-to-string (char)
-  (cl-case char
-    (#x20                               ; space
-     keycaster-space-substitution-string)
-    (otherwise
-     (char-to-string char))))
-
-(defun keycaster--keys-to-string (keys)
-  (mapconcat #'identity
-             (cl-mapcan (lambda (key)
-                          (when-let (type (event-basic-type key))
-                            (list (concat (keycaster--modifiers-to-string
-                                           (event-modifiers key))
-                                          (cond
-                                           ((symbolp type)
-                                            (symbol-name type))
-                                           ((integerp type)
-                                            (keycaster--char-to-string type)))))))
-                        keys)
-             " "))
+(defun keycaster-pre-command ()
+  (keycaster--push-string (keycaster--keys-to-string (this-command-keys))))
 
 (cl-defun keycaster--create-frame (buffer-or-name
                                    &key
@@ -474,9 +449,6 @@ See `set-face-attribute' help for details."
         (set-window-buffer window buffer)
         (set-window-dedicated-p window t))
       frame)))
-
-(defun keycaster-pre-command ()
-  (keycaster--push-string (keycaster--keys-to-string (this-command-keys-vector))))
 
 (defun keycaster-finalize ()
   (interactive)
