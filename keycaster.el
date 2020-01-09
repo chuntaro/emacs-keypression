@@ -90,7 +90,7 @@ Note: The child-frame is broken in GTK3 version.
   :group 'keycaster)
 
 (defcustom keycaster-concat-self-insert t
-  "Concatenate self-insert-command keystrokes."
+  "Concatenate `self-insert-command' keystrokes."
   :type 'boolean
   :group 'keycaster)
 
@@ -141,7 +141,7 @@ Note: The child-frame is broken in GTK3 version.
 
 (defcustom keycaster-frame-background-mode nil
   "Emacs background color mode.
-The value is `light', `dark', or `nil', and if nil, it is detected automatically."
+The value is `light', `dark', or nil, and if nil, it is detected automatically."
   :type '(choice (const light) (const dark) (const nil))
   :group 'keycaster)
 
@@ -162,7 +162,7 @@ See `set-face-attribute' help for details."
   :group 'keycaster)
 
 (defcustom keycaster-right-fringe 8
-  "Right margin of string"
+  "Right margin of string."
   :type 'integer
   :group 'keycaster)
 
@@ -188,7 +188,7 @@ See `set-face-attribute' help for details."
   :group 'keycaster)
 
 (defcustom keycaster-space-substitution-string "␣"
-  "Blank symbol. Specify \"SPC\" etc."
+  "Blank symbol.  Specify \"SPC\" etc."
   :type 'string
   :group 'keycaster)
 
@@ -358,7 +358,7 @@ See `set-face-attribute' help for details."
       keycaster-space-substitution-string
     (key-description keys)))
 
-(defun keycaster-pre-command ()
+(defun keycaster--pre-command ()
   (keycaster--push-string (keycaster--keys-to-string (this-command-keys))))
 
 (cl-defun keycaster--create-frame (buffer-or-name
@@ -450,10 +450,9 @@ See `set-face-attribute' help for details."
         (set-window-dedicated-p window t))
       frame)))
 
-(defun keycaster-finalize ()
-  (interactive)
+(defun keycaster--finalize ()
   (setq frame-alpha-lower-limit keycaster--prev-frame-alpha-lower-limit)
-  (remove-hook 'pre-command-hook 'keycaster-pre-command)
+  (remove-hook 'pre-command-hook 'keycaster--pre-command)
   (when keycaster--fade-out-timer
     (cancel-timer keycaster--fade-out-timer))
   (cl-flet ((mapc-when (array func &rest args)
@@ -478,23 +477,22 @@ See `set-face-attribute' help for details."
     (unless (symbol-value array)
       (set array (make-vector keycaster-frames-maxnum nil)))))
 
-(defun keycaster-workable-p ()
+(defun keycaster--workable-p ()
   "Test keycaster workable status."
   (and (>= emacs-major-version 26)
        (not (or noninteractive
                 emacs-basic-display
                 (not (display-graphic-p))))))
 
-(defun keycaster-initialize ()
-  (interactive)
-  (unless (keycaster-workable-p)
+(defun keycaster--initialize ()
+  (unless (keycaster--workable-p)
     (error "Keycaster: Not GUI version Emacs"))
-  (keycaster-finalize)
+  (keycaster--finalize)
   (setq keycaster--prev-frame-alpha-lower-limit frame-alpha-lower-limit
         frame-alpha-lower-limit 0.0)
   (keycaster--create-arrays)
   (keycaster--create-fade-out-timer)
-  (add-hook 'kill-emacs-hook #'keycaster-finalize)
+  (add-hook 'kill-emacs-hook #'keycaster--finalize)
   (let* ((parent-frame (when keycaster-use-child-frame (window-frame (selected-window))))
          (fg (if (keycaster--light-background-p)
                  keycaster-foreground-for-light-mode
@@ -526,7 +524,7 @@ See `set-face-attribute' help for details."
             (make-frame-visible)))))
     (raise-frame parent-frame))
   (run-at-time 0.5 nil (lambda ()
-                         (add-hook 'pre-command-hook 'keycaster-pre-command))))
+                         (add-hook 'pre-command-hook 'keycaster--pre-command))))
 
 ;;;###autoload
 (define-minor-mode keycaster-mode
@@ -534,8 +532,8 @@ See `set-face-attribute' help for details."
   :lighter " KeyC"
   :global t
   (if keycaster-mode
-      (keycaster-initialize)
-    (keycaster-finalize)))
+      (keycaster--initialize)
+    (keycaster--finalize)))
 
 (provide 'keycaster)
 ;;; keycaster.el ends here
