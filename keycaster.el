@@ -64,7 +64,8 @@
   :type 'integer
   :group 'keycaster)
 
-(defcustom keycaster-use-child-frame (eq system-type 'windows-nt)
+(defcustom keycaster-use-child-frame (or (eq system-type 'windows-nt)
+                                         (eq window-system 'ns))
   "Whether to display keystrokes in child-frame.
 
 Note: The child-frame is broken in GTK3 version.
