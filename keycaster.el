@@ -530,7 +530,7 @@ See `set-face-attribute' help for details."
                  keycaster-background-for-light-mode
                keycaster-background-for-dark-mode)))
     (dotimes (i keycaster-frames-maxnum)
-      (with-current-buffer (get-buffer-create (format "*keycaster-%d*" i))
+      (with-current-buffer (get-buffer-create (format " *keycaster-%d*" i))
         (with-selected-frame (keycaster--create-frame
                               (current-buffer)
                               :override-parameters (if keycaster-use-child-frame
