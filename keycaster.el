@@ -4,7 +4,7 @@
 
 ;; Author: chuntaro <chuntaro@sakura-games.jp>
 ;; Keywords: key, screencast, tools
-;; Version: 0.9.0
+;; Version: 1.0.0
 ;; Homepage: https://github.com/chuntaro/emacs-keycaster
 ;; Package-Requires: ((emacs "26.3"))
 
