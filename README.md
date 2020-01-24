@@ -31,3 +31,5 @@ The default is a simple display, so you can customize it as follows.
       keypression-combine-same-keystrokes t
       keypression-font-face-attribute '(:width normal :height 200 :weight bold))
 ```
+
+![emacs-keypression](https://raw.githubusercontent.com/wiki/chuntaro/emacs-keypression/images/screencast2.gif)
