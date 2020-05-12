@@ -327,7 +327,9 @@ See `set-face-attribute' help for details."
          (same-key (and keypression-combine-same-keystrokes
                         (string= keys keypression--last-keystrokes))))
     (cond
-     ((or self-insert same-key)
+     ((or (and self-insert
+               (< 0 (length keypression--self-insert-string)))
+          same-key)
       ;; Just rewrite the bottom line.
       (let ((str (if self-insert
                      (setq keypression--self-insert-string
@@ -343,7 +345,7 @@ See `set-face-attribute' help for details."
         (keypression--set-position-active-frames t)))
      (t
       (setq keypression--nmatches 1
-            keypression--self-insert-string "")
+            keypression--self-insert-string (if self-insert keys ""))
       (keypression--shift-frame-string)
       (keypression--set-frame-string 0 string)
       (setq keypression--fade-out-delay keypression-fade-out-delay)
