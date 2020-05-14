@@ -4,7 +4,7 @@
 
 ;; Author: chuntaro <chuntaro@sakura-games.jp>
 ;; Keywords: key, screencast, tools
-;; Version: 1.0.0
+;; Version: 1.0.2
 ;; Homepage: https://github.com/chuntaro/emacs-keypression
 ;; Package-Requires: ((emacs "26.3"))
 
@@ -91,6 +91,11 @@ Note: The child-frame is broken in GTK3 version.
 
 (defcustom keypression-concat-self-insert t
   "Concatenate `self-insert-command' keystrokes."
+  :type 'boolean
+  :group 'keypression)
+
+(defcustom keypression-concat-digit-argument t
+  "Concatenate `digit-argument' keystrokes."
   :type 'boolean
   :group 'keypression)
 
@@ -206,6 +211,8 @@ See `set-face-attribute' help for details."
 
 (defvar keypression--nmatches 1)
 (defvar keypression--last-keystrokes "")
+(defvar keypression--last-command nil)
+(defvar keypression--last-command-2 nil)
 (defvar keypression--self-insert-string "")
 
 (defvar keypression--prev-frame-alpha-lower-limit 20)
@@ -316,6 +323,24 @@ See `set-face-attribute' help for details."
       (unless (frame-visible-p frame)
         (make-frame-visible frame)))))
 
+(defsubst keypression--digit-argument-p (command)
+  (and keypression-concat-digit-argument
+       (memq command '(digit-argument universal-argument universal-argument-more))))
+
+(defun keypression--same-command-p ()
+  (cond
+   ((keypression--digit-argument-p keypression--last-command))
+   ((keypression--digit-argument-p this-command)
+    (keypression--digit-argument-p keypression--last-command))
+   ((and (eq this-command keypression--last-command)
+         (not (keypression--digit-argument-p keypression--last-command-2))))))
+
+(defun keypression--push-back-self-insert-string (str &optional separator)
+  (cl-callf concat keypression--self-insert-string
+    (when (and separator (< 0 (length keypression--self-insert-string)))
+      separator)
+    str))
+
 (defun keypression--push-string (keys)
   (let* ((string (if (and keypression-cast-command-name
                           this-command)
@@ -325,18 +350,24 @@ See `set-face-attribute' help for details."
          (self-insert (and keypression-concat-self-insert
                            (eq this-command 'self-insert-command)))
          (same-key (and keypression-combine-same-keystrokes
-                        (string= keys keypression--last-keystrokes))))
+                        (string= keys keypression--last-keystrokes)))
+         (digit-arg (keypression--digit-argument-p this-command))
+         (before-digit-arg (keypression--digit-argument-p keypression--last-command)))
     (cond
-     ((or (and self-insert
-               (< 0 (length keypression--self-insert-string)))
-          same-key)
+     ((and (keypression--same-command-p)
+           (or self-insert same-key digit-arg before-digit-arg))
       ;; Just rewrite the bottom line.
-      (let ((str (if self-insert
-                     (setq keypression--self-insert-string
-                           (concat keypression--self-insert-string keys))
+      (let ((str (cond
+                  ((and self-insert (not before-digit-arg))
+                   (keypression--push-back-self-insert-string keys))
+                  (digit-arg
+                   (keypression--push-back-self-insert-string keys " "))
+                  (before-digit-arg
+                   (keypression--push-back-self-insert-string string " "))
+                  (t ;; same-key
                    (format keypression-combine-format
                            string
-                           (cl-incf keypression--nmatches)))))
+                           (cl-incf keypression--nmatches))))))
         (keypression--set-frame-string 0 str)
         (when (zerop keypression--nactives)
           (cl-incf keypression--nactives))
@@ -345,14 +376,16 @@ See `set-face-attribute' help for details."
         (keypression--set-position-active-frames t)))
      (t
       (setq keypression--nmatches 1
-            keypression--self-insert-string (if self-insert keys ""))
+            keypression--self-insert-string keys)
       (keypression--shift-frame-string)
       (keypression--set-frame-string 0 string)
       (setq keypression--fade-out-delay keypression-fade-out-delay)
       (when (< keypression--nactives keypression-frames-maxnum)
         (cl-incf keypression--nactives))
       (keypression--set-position-active-frames)))
-    (setq keypression--last-keystrokes keys)))
+    (setq keypression--last-keystrokes keys
+          keypression--last-command-2 keypression--last-command
+          keypression--last-command this-command)))
 
 (defsubst keypression--keys-to-string (keys)
   (if (and (eq this-command 'self-insert-command)
