@@ -213,7 +213,7 @@ See `set-face-attribute' help for details."
 (defvar keypression--last-keystrokes "")
 (defvar keypression--last-command nil)
 (defvar keypression--last-command-2 nil)
-(defvar keypression--self-insert-string "")
+(defvar keypression--concat-string "")
 
 (defvar keypression--prev-frame-alpha-lower-limit 20)
 
@@ -336,8 +336,8 @@ See `set-face-attribute' help for details."
          (not (keypression--digit-argument-p keypression--last-command-2))))))
 
 (defun keypression--push-back-self-insert-string (str &optional separator)
-  (cl-callf concat keypression--self-insert-string
-    (when (and separator (< 0 (length keypression--self-insert-string)))
+  (cl-callf concat keypression--concat-string
+    (when (and separator (< 0 (length keypression--concat-string)))
       separator)
     str))
 
@@ -376,7 +376,7 @@ See `set-face-attribute' help for details."
         (keypression--set-position-active-frames t)))
      (t
       (setq keypression--nmatches 1
-            keypression--self-insert-string keys)
+            keypression--concat-string keys)
       (keypression--shift-frame-string)
       (keypression--set-frame-string 0 string)
       (setq keypression--fade-out-delay keypression-fade-out-delay)
