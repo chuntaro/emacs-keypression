@@ -4,7 +4,7 @@
 
 ;; Author: chuntaro <chuntaro@sakura-games.jp>
 ;; Keywords: key, screencast, tools
-;; Version: 1.0.2
+;; Version: 1.0.3
 ;; Homepage: https://github.com/chuntaro/emacs-keypression
 ;; Package-Requires: ((emacs "26.3"))
 
@@ -207,6 +207,7 @@ See `set-face-attribute' help for details."
 (defvar keypression--heights nil)
 
 (defvar keypression--fade-out-delay 0)
+(defvar keypression--fade-out-delay-bottom-line 0)
 (defvar keypression--fade-out-timer nil)
 
 (defvar keypression--nmatches 1)
@@ -228,10 +229,18 @@ See `set-face-attribute' help for details."
 (defsubst keypression--set-frame-alpha (frame alpha)
   (modify-frame-parameters frame `((alpha . ,alpha))))
 
+(defmacro keypression--decrement (fade-out-delay)
+  `(cl-decf ,fade-out-delay (/ 1.0 keypression-fade-out-fps)))
+
 (defun keypression--fade-out ()
+  (keypression--decrement keypression--fade-out-delay-bottom-line)
+  (when (and (= 1 keypression--nactives)
+             (< 0 keypression--fade-out-delay-bottom-line))
+    (setq keypression--fade-out-delay keypression--fade-out-delay-bottom-line
+          keypression--fade-out-delay-bottom-line 0))
   (when-let (frame (and keypression--frames
                         (< 0 keypression--nactives)
-                        (< (cl-decf keypression--fade-out-delay (/ 1.0 keypression-fade-out-fps)) 0)
+                        (< (keypression--decrement keypression--fade-out-delay) 0)
                         (aref keypression--frames (1- keypression--nactives))))
     (let* ((delta (/ 1.0 (* keypression-fade-out-fps keypression-fade-out-seconds)))
            (alpha (- (frame-parameter frame 'alpha) delta)))
@@ -371,8 +380,7 @@ See `set-face-attribute' help for details."
         (keypression--set-frame-string 0 str)
         (when (zerop keypression--nactives)
           (cl-incf keypression--nactives))
-        (when (< keypression--nactives 2)
-          (setq keypression--fade-out-delay keypression-fade-out-delay))
+        (setq keypression--fade-out-delay-bottom-line keypression-fade-out-delay)
         (keypression--set-position-active-frames t)))
      (t
       (setq keypression--nmatches 1
