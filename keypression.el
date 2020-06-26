@@ -53,7 +53,6 @@
 ;;; Code:
 
 (require 'subr-x)
-(require 'css-mode)                     ; for css--contrasty-color
 
 (defgroup keypression nil
   "Keystroke visualizer for GUI version Emacs."
@@ -220,10 +219,14 @@ See `set-face-attribute' help for details."
 
 ;;; Functions
 
+(defsubst keypression--contrasty-color (name)
+  (if (> (color-distance name "black") 292485)
+      "black" "white"))
+
 (defun keypression--light-background-p ()
   (if keypression-frame-background-mode
       (not (eq keypression-frame-background-mode 'dark))
-    (string= (css--contrasty-color (frame-parameter (selected-frame) 'background-color))
+    (string= (keypression--contrasty-color (frame-parameter (selected-frame) 'background-color))
              "black")))
 
 (defsubst keypression--set-frame-alpha (frame alpha)
