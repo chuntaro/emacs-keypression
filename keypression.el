@@ -421,7 +421,8 @@ See `set-face-attribute' help for details."
                                      keep-ratio
                                      override-parameters
                                      respect-header-line
-                                     respect-mode-line)
+                                     respect-mode-line
+                                     respect-tab-line)
   "Create a frame. Copied from posframe."
   (let ((left-fringe (or left-fringe 0))
         (right-fringe (or right-fringe 0))
@@ -446,6 +447,8 @@ See `set-face-attribute' help for details."
         (setq-local mode-line-format nil))
       (unless respect-header-line
         (setq-local header-line-format nil))
+      (unless respect-tab-line
+        (setq-local tab-line-format nil))
       (setq-local indicate-buffer-boundaries nil)
 
       (setq frame
@@ -471,6 +474,7 @@ See `set-face-attribute' help for details."
                (right-fringe . ,right-fringe)
                (menu-bar-lines . 0)
                (tool-bar-lines . 0)
+               (tab-bar-lines . 0)
                (line-spacing . 0)
                (unsplittable . t)
                (no-other-frame . t)
@@ -493,6 +497,8 @@ See `set-face-attribute' help for details."
           (set-window-parameter window 'mode-line-format 'none))
         (unless respect-header-line
           (set-window-parameter window 'header-line-format 'none))
+        (unless respect-tab-line
+          (set-window-parameter window 'tab-line-format 'none))
         (set-window-buffer window buffer)
         (set-window-dedicated-p window t))
       frame)))
