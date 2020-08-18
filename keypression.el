@@ -4,7 +4,7 @@
 
 ;; Author: chuntaro <chuntaro@sakura-games.jp>
 ;; Keywords: key, screencast, tools
-;; Version: 1.0.4
+;; Version: 1.0.5
 ;; Homepage: https://github.com/chuntaro/emacs-keypression
 ;; Package-Requires: ((emacs "26.3"))
 
@@ -195,6 +195,16 @@ See `set-face-attribute' help for details."
 (defcustom keypression-space-substitution-string "␣"
   "Blank symbol.  Specify \"SPC\" etc."
   :type 'string
+  :group 'keypression)
+
+(defcustom keypression-ignore-mouse-events '(mouse-1 mouse-2 mouse-3 mouse-movement wheel-up wheel-down)
+  "List of mouse events to ignore."
+  :type '(set (const mouse-1)
+              (const mouse-2)
+              (const mouse-3)
+              (const mouse-movement)
+              (const wheel-up)
+              (const wheel-down))
   :group 'keypression)
 
 ;;; Global variables
@@ -406,7 +416,8 @@ See `set-face-attribute' help for details."
     (key-description keys)))
 
 (defun keypression--pre-command ()
-  (keypression--push-string (keypression--keys-to-string (this-command-keys))))
+  (unless (memq (event-basic-type last-command-event) keypression-ignore-mouse-events)
+    (keypression--push-string (keypression--keys-to-string (this-command-keys)))))
 
 (cl-defun keypression--create-frame (buffer-or-name
                                      &key
