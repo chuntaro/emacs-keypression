@@ -53,6 +53,7 @@
 ;;; Code:
 
 (require 'subr-x)
+(eval-when-compile (require 'cl-lib))
 
 (defgroup keypression nil
   "Keystroke visualizer for GUI version Emacs."
