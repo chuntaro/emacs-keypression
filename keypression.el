@@ -197,11 +197,13 @@ See `set-face-attribute' help for details."
   :type 'string
   :group 'keypression)
 
-(defcustom keypression-ignore-mouse-events '(mouse-1 mouse-2 mouse-3 mouse-movement wheel-up wheel-down)
+(defcustom keypression-ignore-mouse-events '(mouse-1 mouse-2 mouse-3 mouse-4 mouse-5 mouse-movement wheel-up wheel-down)
   "List of mouse events to ignore."
   :type '(set (const mouse-1)
               (const mouse-2)
               (const mouse-3)
+              (const mouse-4)
+              (const mouse-5)
               (const mouse-movement)
               (const wheel-up)
               (const wheel-down))
