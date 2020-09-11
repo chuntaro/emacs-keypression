@@ -1,3 +1,5 @@
+[![MELPA](https://melpa.org/packages/keypression-badge.svg)](https://melpa.org/#/keypression)
+
 # Keystroke visualizer for GUI version Emacs
 
 This package is a keystroke visualizer for GUI version Emacs.  
