@@ -579,7 +579,7 @@ the command is ignored."
   (keypression--create-arrays)
   (keypression--create-fade-out-timer)
   (add-hook 'kill-emacs-hook #'keypression--finalize)
-  (let* ((parent-frame (when keypression-use-child-frame (window-frame (selected-window))))
+  (let* ((parent-frame (window-frame (selected-window)))
          (fg (if (keypression--light-background-p)
                  keypression-foreground-for-light-mode
                keypression-foreground-for-dark-mode))
@@ -590,12 +590,12 @@ the command is ignored."
       (with-current-buffer (get-buffer-create (format " *keypression-%d*" i))
         (with-selected-frame (keypression--create-frame
                               (current-buffer)
-                              :override-parameters (if keypression-use-child-frame
-                                                       `((parent-frame . ,parent-frame)
-                                                         (font . ,keypression-font))
-                                                     `((parent-frame . ,parent-frame)
-                                                       (z-group . above)
-                                                       (font . ,keypression-font)))
+                              :override-parameters
+                              `((parent-frame ,(when keypression-use-child-frame
+                                                 parent-frame))
+                                (delete-before . ,parent-frame)
+                                (font . ,keypression-font)
+                                (z-group . ,(unless keypression-use-child-frame 'above)))
                               :foreground-color fg
                               :background-color bg
                               :left-fringe keypression-left-fringe
