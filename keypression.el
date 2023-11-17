@@ -209,6 +209,10 @@ See `set-face-attribute' help for details."
               (const wheel-down))
   :group 'keypression)
 
+(defcustom keypression-ignored-commands '(self-insert-command)
+  "List of commands to ignore."
+  :type '(repeat symbol))
+
 ;;; Global variables
 
 (defvar keypression--nactives 0)
@@ -418,7 +422,9 @@ See `set-face-attribute' help for details."
     (key-description keys)))
 
 (defun keypression--pre-command ()
-  (unless (memq (event-basic-type last-command-event) keypression-ignore-mouse-events)
+  (unless (or (memq (event-basic-type last-command-event)
+                    keypression-ignore-mouse-events)
+              (memq this-command keypression-ignored-commands))
     (keypression--push-string (keypression--keys-to-string (this-command-keys)))))
 
 (cl-defun keypression--create-frame (buffer-or-name
