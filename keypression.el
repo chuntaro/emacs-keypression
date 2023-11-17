@@ -210,8 +210,13 @@ See `set-face-attribute' help for details."
   :group 'keypression)
 
 (defcustom keypression-ignored-commands '(self-insert-command)
-  "List of commands to ignore."
-  :type '(repeat symbol))
+  "Function or list that rejects commands.
+If list, members will be ignored.  When a function is provided, function will be
+called with single COMMAND argument, a symbol.  If the function returns non-nil,
+the command is ignored."
+  :group 'keypression
+  :type '(symbol (list symbol))
+  :options '(symbol (repeat symbol)))
 
 ;;; Global variables
 
@@ -424,7 +429,10 @@ See `set-face-attribute' help for details."
 (defun keypression--pre-command ()
   (unless (or (memq (event-basic-type last-command-event)
                     keypression-ignore-mouse-events)
-              (memq this-command keypression-ignored-commands))
+              (if (functionp keypression-ignored-commands)
+                  (funcall keypression-ignored-commands this-command)
+                ;; assume list if not callable.
+                (memq this-command keypression-ignored-commands)))
     (keypression--push-string (keypression--keys-to-string (this-command-keys)))))
 
 (cl-defun keypression--create-frame (buffer-or-name
