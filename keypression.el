@@ -595,7 +595,10 @@ See `set-face-attribute' help for details."
           (keypression--set-frame-alpha (selected-frame) 0.0)
           (aset keypression--frames i (selected-frame))
           (aset keypression--buffers i (current-buffer))
-          (apply #'set-face-attribute 'default (selected-frame) keypression-font-face-attribute)
+          (apply #'set-face-attribute 'default (selected-frame)
+                 keypression-font-face-attribute)
+          (set-face-attribute 'default (selected-frame) :foreground fg)
+          (set-face-attribute 'default (selected-frame) :background bg)
           (set-face-attribute 'fringe (selected-frame) :background bg)
           ;; Workaround for invisible bugs...
           (when (eq system-type 'windows-nt)
