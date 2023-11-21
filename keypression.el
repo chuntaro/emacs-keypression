@@ -362,10 +362,10 @@ the command is ignored."
   (and keypression-concat-digit-argument
        (memq command '(digit-argument universal-argument universal-argument-more))))
 
-(defun keypression--same-command-p ()
+(defun keypression--same-command-p (command)
   (cond
    ((keypression--digit-argument-p keypression--last-command))
-   ((keypression--digit-argument-p this-command)
+   ((keypression--digit-argument-p command)
     (keypression--digit-argument-p keypression--last-command))
    ((and (eq this-command keypression--last-command)
          (not (keypression--digit-argument-p keypression--last-command-2))))))
@@ -391,7 +391,7 @@ Command filtering logic is in the `keypression-post--command'."
          (digit-arg (keypression--digit-argument-p command))
          (before-digit-arg (keypression--digit-argument-p keypression--last-command)))
     (cond
-     ((and (keypression--same-command-p)
+     ((and (keypression--same-command-p command)
            (or self-insert same-key digit-arg before-digit-arg))
       ;; Just rewrite the bottom line.
       (let ((str (cond
