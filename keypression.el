@@ -375,17 +375,19 @@ the command is ignored."
       separator)
     str))
 
-(defun keypression--push-string (keys)
-  (let* ((string (if (and keypression-cast-command-name
-                          this-command)
+(defun keypression--push-string (keys command)
+  "Push string handles rendering and collapsing repeats.
+It converts `self-insert-command' and digit prefix arguments.
+Command filtering logic is in the `keypression-post--command'."
+  (let* ((string (if (and keypression-cast-command-name command)
                      (format keypression-cast-command-name-format
-                             keys this-command)
+                             keys command)
                    keys))
          (self-insert (and keypression-concat-self-insert
-                           (eq this-command 'self-insert-command)))
+                           (eq command 'self-insert-command)))
          (same-key (and keypression-combine-same-keystrokes
                         (string= keys keypression--last-keystrokes)))
-         (digit-arg (keypression--digit-argument-p this-command))
+         (digit-arg (keypression--digit-argument-p command))
          (before-digit-arg (keypression--digit-argument-p keypression--last-command)))
     (cond
      ((and (keypression--same-command-p)
@@ -418,10 +420,10 @@ the command is ignored."
       (keypression--set-position-active-frames)))
     (setq keypression--last-keystrokes keys
           keypression--last-command-2 keypression--last-command
-          keypression--last-command this-command)))
+          keypression--last-command command)))
 
-(defsubst keypression--keys-to-string (keys)
-  (if (and (eq this-command 'self-insert-command)
+(defsubst keypression--keys-to-string (keys command)
+  (if (and (eq command 'self-insert-command)
            (string= keys " "))
       keypression-space-substitution-string
     (key-description keys)))
@@ -439,7 +441,9 @@ hook.")
                   (funcall keypression-ignored-commands this-command)
                 ;; assume list if not callable.
                 (memq this-command keypression-ignored-commands)))
-    (keypression--push-string (keypression--keys-to-string (this-command-keys)))))
+    (keypression--push-string
+     (keypression--keys-to-string (this-command-keys) this-command)
+     this-command)))
 
 (cl-defun keypression--create-frame (buffer-or-name
                                      &key
