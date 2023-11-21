@@ -235,6 +235,7 @@ the command is ignored."
 (defvar keypression--last-keystrokes "")
 (defvar keypression--last-command nil)
 (defvar keypression--last-command-2 nil)
+(defvar keypression--pre-command-keys nil)
 (defvar keypression--concat-string "")
 
 (defvar keypression--prev-frame-alpha-lower-limit 20)
@@ -432,7 +433,8 @@ Command filtering logic is in the `keypression-post--command'."
   "Record the pre-command state.
 This enables us to differentiate commands that delegate out to other commands by
 reading before the command and comparing the state during the post command
-hook.")
+hook."
+  (setq keypression--pre-command-keys (this-command-keys)))
 
 (defun keypression--post-command ()
   (unless (or (memq (event-basic-type last-command-event)
@@ -442,7 +444,7 @@ hook.")
                 ;; assume list if not callable.
                 (memq this-command keypression-ignored-commands)))
     (keypression--push-string
-     (keypression--keys-to-string (this-command-keys) this-command)
+     (keypression--keys-to-string keypression--pre-command-keys this-command)
      this-command)))
 
 (cl-defun keypression--create-frame (buffer-or-name
