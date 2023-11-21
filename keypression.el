@@ -424,8 +424,9 @@ and show the value of `this-command' logged in the
 
 (defun keypression--push-string (keys command)
   "Push string handles rendering and collapsing repeats.
-It converts `self-insert-command' and digit prefix arguments.
-Command filtering logic is in the `keypression-post--command'."
+It configures animation state when new commands are to be
+displayed.  Repeats, strings, and digit arguments may be merged.
+KEYS and COMMAND are decided in `keypression--post-command'."
   (let* ((string (if (and keypression-cast-command-name command)
                      (format keypression-cast-command-name-format
                              keys command)
@@ -516,7 +517,7 @@ hook."
                                      respect-header-line
                                      respect-mode-line
                                      respect-tab-line)
-  "Create a frame. Copied from posframe."
+  "Create a frame.  Copied from posframe."
   (let ((left-fringe (or left-fringe 0))
         (right-fringe (or right-fringe 0))
         (internal-border-width (or internal-border-width 0))
