@@ -218,6 +218,30 @@ the command is ignored."
   :type '(symbol (list symbol))
   :options '(symbol (repeat symbol)))
 
+(defcustom keypression-pre-or-post-command 'post-command
+  "Show the bound command or what it delegates to?
+Either the pre-command or post-command value of `this-command'
+can be preferred.  The actual key binding is observable during
+`pre-command-hook' but sometimes it delegates to another command,
+observable during the `post-commnand-hook'.  When working on
+bindings in the minibuffer, you should use `pre-command` and
+when screencasting and showing users which `M-x` commands you used,
+set to `post-command`.
+
+For example, when you call a command via `M-x`, the command to
+pick a completion result will delegate to another command.  If
+you select `next-line', do you want to see `ivy-done' or
+`next-line'?  Selecting `pre-command` will show exactly what was
+bound, even if it's boring, such as `ivy-done'.  Selecting
+`post-command` will show what these commands delegate to.
+
+Also see `keypression-post-excepting-pre-commands' for a list of
+commands that revert to `pre-command` behavior because they don't
+update the value of `this-command'."
+  :group 'keypression
+  :type 'symbol
+  :options '(pre-command post-command))
+
 ;;; Global variables
 
 (defvar keypression--nactives 0)
@@ -235,6 +259,7 @@ the command is ignored."
 (defvar keypression--last-keystrokes "")
 (defvar keypression--last-command nil)
 (defvar keypression--last-command-2 nil)
+(defvar keypression--pre-command-command)
 (defvar keypression--pre-command-keys nil)
 (defvar keypression--concat-string "")
 
@@ -371,6 +396,7 @@ the command is ignored."
          (not (keypression--digit-argument-p keypression--last-command-2))))))
 
 (defun keypression--push-back-self-insert-string (str &optional separator)
+  "Append SEPARATOR and STR to `keypression--concat-string'."
   (cl-callf concat keypression--concat-string
     (when (and separator (< 0 (length keypression--concat-string)))
       separator)
@@ -434,18 +460,23 @@ Command filtering logic is in the `keypression-post--command'."
 This enables us to differentiate commands that delegate out to other commands by
 reading before the command and comparing the state during the post command
 hook."
+  (setq keypression--pre-command-command this-command)
   (setq keypression--pre-command-keys (this-command-keys)))
 
 (defun keypression--post-command ()
-  (unless (or (memq (event-basic-type last-command-event)
-                    keypression-ignore-mouse-events)
-              (if (functionp keypression-ignored-commands)
-                  (funcall keypression-ignored-commands this-command)
-                ;; assume list if not callable.
-                (memq this-command keypression-ignored-commands)))
-    (keypression--push-string
-     (keypression--keys-to-string keypression--pre-command-keys this-command)
-     this-command)))
+  (let ((command (if (eq keypression-pre-or-post-command 'pre-command)
+                     keypression--pre-command-command
+                   this-command)))
+    (unless (or (memq (event-basic-type last-command-event)
+                      keypression-ignore-mouse-events)
+                (if (functionp keypression-ignored-commands)
+                    (funcall keypression-ignored-commands command)
+                  ;; assume list if not callable.
+                  (memq this-command keypression-ignored-commands)))
+      (keypression--push-string
+       (keypression--keys-to-string
+        keypression--pre-command-keys command)
+       command))))
 
 (cl-defun keypression--create-frame (buffer-or-name
                                      &key
