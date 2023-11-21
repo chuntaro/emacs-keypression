@@ -406,7 +406,8 @@ and show the value of `this-command' logged in the
   (and keypression-concat-digit-argument
        (memq command '(digit-argument universal-argument universal-argument-more))))
 
-(defun keypression--same-command-p (command)
+(defun keypression--digit-prefix-p (command)
+  "Should we fold digit arguments and commands for COMMAND."
   (cond
    ((keypression--digit-argument-p keypression--last-command))
    ((keypression--digit-argument-p command)
@@ -436,7 +437,7 @@ Command filtering logic is in the `keypression-post--command'."
          (digit-arg (keypression--digit-argument-p command))
          (before-digit-arg (keypression--digit-argument-p keypression--last-command)))
     (cond
-     ((and (keypression--same-command-p command)
+     ((and (keypression--digit-prefix-p command)
            (or self-insert same-key digit-arg before-digit-arg))
       ;; Just rewrite the bottom line.
       (let ((str (cond
