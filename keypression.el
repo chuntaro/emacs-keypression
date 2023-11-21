@@ -242,6 +242,25 @@ update the value of `this-command'."
   :type 'symbol
   :options '(pre-command post-command))
 
+(defcustom keypression-post-excepting-pre-commands
+  `(counsel-M-x
+    universal-argument-more
+    universal-argument
+    digit-argument
+    execute-extended-command
+    ;; whatever the user's `M-x` remap is
+    ,(command-remapping 'execute-extended-command))
+  "A list of commands that require some exception behavior.
+When `keypression-log-preference' is set to `post-command` but
+the command we observe in the `post-command-hook' is a member of
+this list, the value of `this-command' has not been updated or is
+invalid.  In these cases, we fall back to `pre-command` behavior
+and show the value of `this-command' logged in the
+`pre-command-hook'.  One common case is
+`execute-extended-command' and it's usual re-mappings."
+  :group 'keypression
+  :type '(repeat symbol))
+
 ;;; Global variables
 
 (defvar keypression--nactives 0)
@@ -466,7 +485,10 @@ hook."
 (defun keypression--post-command ()
   (let ((command (if (eq keypression-pre-or-post-command 'pre-command)
                      keypression--pre-command-command
-                   this-command)))
+                   (if (member keypression--pre-command-command
+                               keypression-post-excepting-pre-commands)
+                       keypression--pre-command-command
+                     this-command))))
     (unless (or (memq (event-basic-type last-command-event)
                       keypression-ignore-mouse-events)
                 (if (functionp keypression-ignored-commands)
