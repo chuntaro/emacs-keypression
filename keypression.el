@@ -426,6 +426,12 @@ the command is ignored."
       keypression-space-substitution-string
     (key-description keys)))
 
+(defun keypression--pre-command ()
+  "Record the pre-command state.
+This enables us to differentiate commands that delegate out to other commands by
+reading before the command and comparing the state during the post command
+hook.")
+
 (defun keypression--post-command ()
   (unless (or (memq (event-basic-type last-command-event)
                     keypression-ignore-mouse-events)
@@ -538,14 +544,15 @@ the command is ignored."
 
 (defun keypression--finalize ()
   (setq frame-alpha-lower-limit keypression--prev-frame-alpha-lower-limit)
+  (remove-hook 'pre-command-hook 'keypression--pre-command)
   (remove-hook 'post-command-hook 'keypression--post-command)
   (when keypression--fade-out-timer
     (cancel-timer keypression--fade-out-timer))
   (cl-flet ((mapc-when (array func &rest args)
-                       (mapc (lambda (elem)
-                               (when elem
-                                 (apply func elem args)))
-                             array)))
+              (mapc (lambda (elem)
+                      (when elem
+                        (apply func elem args)))
+                    array)))
     (mapc-when keypression--buffers #'kill-buffer)
     (mapc-when keypression--frames #'delete-frame t))
   (setq keypression--fade-out-timer nil
@@ -612,8 +619,10 @@ the command is ignored."
           (when (eq system-type 'windows-nt)
             (make-frame-visible)))))
     (raise-frame parent-frame))
+
   (run-at-time 0.5 nil (lambda ()
-                         (add-hook 'post-command-hook 'keypression--post-command))))
+                         (add-hook 'pre-command-hook #'keypression--pre-command)
+                         (add-hook 'post-command-hook #'keypression--post-command))))
 
 ;;;###autoload
 (define-minor-mode keypression-mode
