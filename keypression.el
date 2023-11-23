@@ -209,6 +209,58 @@ See `set-face-attribute' help for details."
               (const wheel-down))
   :group 'keypression)
 
+(defcustom keypression-ignored-commands '(self-insert-command)
+  "Function or list that rejects commands.
+If list, members will be ignored.  When a function is provided, function will be
+called with single COMMAND argument, a symbol.  If the function returns non-nil,
+the command is ignored."
+  :group 'keypression
+  :type '(symbol (list symbol))
+  :options '(symbol (repeat symbol)))
+
+(defcustom keypression-pre-or-post-command 'post-command
+  "Show the bound command or what it delegates to?
+Either the pre-command or post-command value of `this-command'
+can be preferred.  The actual key binding is observable during
+`pre-command-hook' but sometimes it delegates to another command,
+observable during the `post-commnand-hook'.  When working on
+bindings in the minibuffer, you should use `pre-command` and
+when screencasting and showing users which `M-x` commands you used,
+set to `post-command`.
+
+For example, when you call a command via `M-x`, the command to
+pick a completion result will delegate to another command.  If
+you select `next-line', do you want to see `ivy-done' or
+`next-line'?  Selecting `pre-command` will show exactly what was
+bound, even if it's boring, such as `ivy-done'.  Selecting
+`post-command` will show what these commands delegate to.
+
+Also see `keypression-post-excepting-pre-commands' for a list of
+commands that revert to `pre-command` behavior because they don't
+update the value of `this-command'."
+  :group 'keypression
+  :type 'symbol
+  :options '(pre-command post-command))
+
+(defcustom keypression-post-excepting-pre-commands
+  `(counsel-M-x
+    universal-argument-more
+    universal-argument
+    digit-argument
+    execute-extended-command
+    ;; whatever the user's `M-x` remap is
+    ,(command-remapping 'execute-extended-command))
+  "A list of commands that require some exception behavior.
+When `keypression-log-preference' is set to `post-command` but
+the command we observe in the `post-command-hook' is a member of
+this list, the value of `this-command' has not been updated or is
+invalid.  In these cases, we fall back to `pre-command` behavior
+and show the value of `this-command' logged in the
+`pre-command-hook'.  One common case is
+`execute-extended-command' and it's usual re-mappings."
+  :group 'keypression
+  :type '(repeat symbol))
+
 ;;; Global variables
 
 (defvar keypression--nactives 0)
@@ -226,6 +278,8 @@ See `set-face-attribute' help for details."
 (defvar keypression--last-keystrokes "")
 (defvar keypression--last-command nil)
 (defvar keypression--last-command-2 nil)
+(defvar keypression--pre-command-command)
+(defvar keypression--pre-command-keys nil)
 (defvar keypression--concat-string "")
 
 (defvar keypression--prev-frame-alpha-lower-limit 20)
@@ -352,34 +406,39 @@ See `set-face-attribute' help for details."
   (and keypression-concat-digit-argument
        (memq command '(digit-argument universal-argument universal-argument-more))))
 
-(defun keypression--same-command-p ()
+(defun keypression--digit-prefix-p (command)
+  "Should we fold digit arguments and commands for COMMAND."
   (cond
    ((keypression--digit-argument-p keypression--last-command))
-   ((keypression--digit-argument-p this-command)
+   ((keypression--digit-argument-p command)
     (keypression--digit-argument-p keypression--last-command))
    ((and (eq this-command keypression--last-command)
          (not (keypression--digit-argument-p keypression--last-command-2))))))
 
 (defun keypression--push-back-self-insert-string (str &optional separator)
+  "Append SEPARATOR and STR to `keypression--concat-string'."
   (cl-callf concat keypression--concat-string
     (when (and separator (< 0 (length keypression--concat-string)))
       separator)
     str))
 
-(defun keypression--push-string (keys)
-  (let* ((string (if (and keypression-cast-command-name
-                          this-command)
+(defun keypression--push-string (keys command)
+  "Push string handles rendering and collapsing repeats.
+It configures animation state when new commands are to be
+displayed.  Repeats, strings, and digit arguments may be merged.
+KEYS and COMMAND are decided in `keypression--post-command'."
+  (let* ((string (if (and keypression-cast-command-name command)
                      (format keypression-cast-command-name-format
-                             keys this-command)
+                             keys command)
                    keys))
          (self-insert (and keypression-concat-self-insert
-                           (eq this-command 'self-insert-command)))
+                           (eq command 'self-insert-command)))
          (same-key (and keypression-combine-same-keystrokes
                         (string= keys keypression--last-keystrokes)))
-         (digit-arg (keypression--digit-argument-p this-command))
+         (digit-arg (keypression--digit-argument-p command))
          (before-digit-arg (keypression--digit-argument-p keypression--last-command)))
     (cond
-     ((and (keypression--same-command-p)
+     ((and (keypression--digit-prefix-p command)
            (or self-insert same-key digit-arg before-digit-arg))
       ;; Just rewrite the bottom line.
       (let ((str (cond
@@ -409,17 +468,39 @@ See `set-face-attribute' help for details."
       (keypression--set-position-active-frames)))
     (setq keypression--last-keystrokes keys
           keypression--last-command-2 keypression--last-command
-          keypression--last-command this-command)))
+          keypression--last-command command)))
 
-(defsubst keypression--keys-to-string (keys)
-  (if (and (eq this-command 'self-insert-command)
+(defsubst keypression--keys-to-string (keys command)
+  (if (and (eq command 'self-insert-command)
            (string= keys " "))
       keypression-space-substitution-string
     (key-description keys)))
 
 (defun keypression--pre-command ()
-  (unless (memq (event-basic-type last-command-event) keypression-ignore-mouse-events)
-    (keypression--push-string (keypression--keys-to-string (this-command-keys)))))
+  "Record the pre-command state.
+This enables us to differentiate commands that delegate out to other commands by
+reading before the command and comparing the state during the post command
+hook."
+  (setq keypression--pre-command-command this-command)
+  (setq keypression--pre-command-keys (this-command-keys)))
+
+(defun keypression--post-command ()
+  (let ((command (if (eq keypression-pre-or-post-command 'pre-command)
+                     keypression--pre-command-command
+                   (if (member keypression--pre-command-command
+                               keypression-post-excepting-pre-commands)
+                       keypression--pre-command-command
+                     this-command))))
+    (unless (or (memq (event-basic-type last-command-event)
+                      keypression-ignore-mouse-events)
+                (if (functionp keypression-ignored-commands)
+                    (funcall keypression-ignored-commands command)
+                  ;; assume list if not callable.
+                  (memq this-command keypression-ignored-commands)))
+      (keypression--push-string
+       (keypression--keys-to-string
+        keypression--pre-command-keys command)
+       command))))
 
 (cl-defun keypression--create-frame (buffer-or-name
                                      &key
@@ -436,7 +517,7 @@ See `set-face-attribute' help for details."
                                      respect-header-line
                                      respect-mode-line
                                      respect-tab-line)
-  "Create a frame. Copied from posframe."
+  "Create a frame.  Copied from posframe."
   (let ((left-fringe (or left-fringe 0))
         (right-fringe (or right-fringe 0))
         (internal-border-width (or internal-border-width 0))
@@ -477,6 +558,12 @@ See `set-face-attribute' help for details."
                (keep-ratio ,keep-ratio)
                (fullscreen . nil)
                (no-accept-focus . t)
+               (no-focus-on-map . t)
+               (modeline . nil)
+               (skip-taskbar . t)
+               (user-size . t)
+               (user-position . t)
+               (icon-type nil)
                (min-width  . 0)
                (min-height . 0)
                (border-width . 0)
@@ -519,13 +606,14 @@ See `set-face-attribute' help for details."
 (defun keypression--finalize ()
   (setq frame-alpha-lower-limit keypression--prev-frame-alpha-lower-limit)
   (remove-hook 'pre-command-hook 'keypression--pre-command)
+  (remove-hook 'post-command-hook 'keypression--post-command)
   (when keypression--fade-out-timer
     (cancel-timer keypression--fade-out-timer))
   (cl-flet ((mapc-when (array func &rest args)
-                       (mapc (lambda (elem)
-                               (when elem
-                                 (apply func elem args)))
-                             array)))
+              (mapc (lambda (elem)
+                      (when elem
+                        (apply func elem args)))
+                    array)))
     (mapc-when keypression--buffers #'kill-buffer)
     (mapc-when keypression--frames #'delete-frame t))
   (setq keypression--fade-out-timer nil
@@ -559,7 +647,7 @@ See `set-face-attribute' help for details."
   (keypression--create-arrays)
   (keypression--create-fade-out-timer)
   (add-hook 'kill-emacs-hook #'keypression--finalize)
-  (let* ((parent-frame (when keypression-use-child-frame (window-frame (selected-window))))
+  (let* ((parent-frame (window-frame (selected-window)))
          (fg (if (keypression--light-background-p)
                  keypression-foreground-for-light-mode
                keypression-foreground-for-dark-mode))
@@ -570,12 +658,12 @@ See `set-face-attribute' help for details."
       (with-current-buffer (get-buffer-create (format " *keypression-%d*" i))
         (with-selected-frame (keypression--create-frame
                               (current-buffer)
-                              :override-parameters (if keypression-use-child-frame
-                                                       `((parent-frame . ,parent-frame)
-                                                         (font . ,keypression-font))
-                                                     `((parent-frame . ,parent-frame)
-                                                       (z-group . above)
-                                                       (font . ,keypression-font)))
+                              :override-parameters
+                              `((parent-frame ,(when keypression-use-child-frame
+                                                 parent-frame))
+                                (delete-before . ,parent-frame)
+                                (font . ,keypression-font)
+                                (z-group . ,(unless keypression-use-child-frame 'above)))
                               :foreground-color fg
                               :background-color bg
                               :left-fringe keypression-left-fringe
@@ -583,14 +671,19 @@ See `set-face-attribute' help for details."
           (keypression--set-frame-alpha (selected-frame) 0.0)
           (aset keypression--frames i (selected-frame))
           (aset keypression--buffers i (current-buffer))
-          (apply #'set-face-attribute 'default (selected-frame) keypression-font-face-attribute)
+          (apply #'set-face-attribute 'default (selected-frame)
+                 keypression-font-face-attribute)
+          (set-face-attribute 'default (selected-frame) :foreground fg)
+          (set-face-attribute 'default (selected-frame) :background bg)
           (set-face-attribute 'fringe (selected-frame) :background bg)
           ;; Workaround for invisible bugs...
           (when (eq system-type 'windows-nt)
             (make-frame-visible)))))
     (raise-frame parent-frame))
+
   (run-at-time 0.5 nil (lambda ()
-                         (add-hook 'pre-command-hook 'keypression--pre-command))))
+                         (add-hook 'pre-command-hook #'keypression--pre-command)
+                         (add-hook 'post-command-hook #'keypression--post-command))))
 
 ;;;###autoload
 (define-minor-mode keypression-mode
