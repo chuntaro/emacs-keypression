@@ -197,6 +197,12 @@ See `set-face-attribute' help for details."
   :type 'string
   :group 'keypression)
 
+(defcustom keypression-key-substitution-strings
+  '(("<left>" . "←") ("<right>" . "→") ("<up>" . "↑") ("<down>" . "↓")
+    ("DEL" . "⌫"))
+  "Display of key-sequences will replace these strings."
+  :type '(alist :key-type string :value-type string))
+
 (defcustom keypression-ignore-mouse-events '(mouse-1 mouse-2 mouse-3 mouse-4 mouse-5 mouse-movement wheel-up wheel-down)
   "List of mouse events to ignore."
   :type '(set (const mouse-1)
@@ -474,7 +480,11 @@ KEYS and COMMAND are decided in `keypression--post-command'."
   (if (and (eq command 'self-insert-command)
            (string= keys " "))
       keypression-space-substitution-string
-    (key-description keys)))
+    (mapconcat
+     (lambda (s)
+       (or (cdr (assoc-string s keypression-key-substitution-strings)) s))
+     (string-split (key-description keys) "-")
+     "-")))
 
 (defun keypression--pre-command ()
   "Record the pre-command state.
